@@ -1,0 +1,9 @@
+.*.ko.cmd
+.*.o.cmd
+.tmp_versions/
+*.symvers
+*.order
+*.o
+*.ko
+*.mod.c
+pollread

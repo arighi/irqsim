@@ -1,0 +1,18 @@
+irqsim - IRQ-based device simulator
+===================================
+
+Simple kernel module, written for didactic purposes, to explain the concept
+of deferred work and understand the different kernel contextes and their
+properties / constraints.
+
+This module covers the following concepts:
+  - irq,
+  - softirq,
+  - tasklet,
+  - workqueue,
+  - kernel thread,
+  - kernel code,
+  - userspace code.
+
+This module can be also used as a template to implement an IRQ-based device
+driver.
