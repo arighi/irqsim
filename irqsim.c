@@ -270,7 +270,7 @@ static ssize_t irqsim_read(struct file *file, char __user *buf,
 
 	pr_debug("%s(%p, %zd, %lld)\n", __func__, buf, count, *ppos);
 
-	if (unlikely(!access_ok(VERIFY_WRITE, buf, count)))
+	if (unlikely(!access_ok(buf, count)))
 		return -EFAULT;
 	if (mutex_lock_interruptible(&read_lock))
 		return -ERESTARTSYS;
