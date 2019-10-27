@@ -11,7 +11,7 @@ all:
 install:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
 clean:
-	rm -f *.o *.ko *.mod.* .*.cmd Module.symvers modules.order
+	rm -f *.o *.ko *.mod* .*.cmd Module.symvers modules.order
 	rm -rf .tmp_versions
 	rm -f pollread
 else
