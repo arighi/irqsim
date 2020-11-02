@@ -209,6 +209,7 @@ static void irqsim_tasklet_func(unsigned long __data)
 	ktime_t tv_start, tv_end;
 	s64 nsecs;
 
+	WARN_ON_ONCE(!in_interrupt());
 	WARN_ON_ONCE(!in_softirq());
 
 	tv_start = ktime_get();
