@@ -84,7 +84,7 @@ static void produce_data(unsigned char val)
 	 */
 	len = kfifo_in(&rx_fifo, &val, sizeof(val));
 	if (unlikely(len < sizeof(val)) && printk_ratelimit())
-		pr_warning("%s: %zu bytes dropped\n",
+		pr_warn("%s: %zu bytes dropped\n",
 				__func__, sizeof(val) - len);
 	pr_debug("%s: in %u/%u bytes\n", __func__, len, kfifo_len(&rx_fifo));
 }
