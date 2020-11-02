@@ -86,7 +86,7 @@ static void produce_data(unsigned char val)
 	if (unlikely(len < sizeof(val)) && printk_ratelimit())
 		pr_warn("%s: %zu bytes dropped\n",
 				__func__, sizeof(val) - len);
-	pr_debug("%s: in %u/%u bytes\n", __func__, len, kfifo_len(&rx_fifo));
+	pr_debug("irqsim: %s: in %u/%u bytes\n", __func__, len, kfifo_len(&rx_fifo));
 }
 
 /* Mutex to serialize kfifo writers within the workqueue handler */
@@ -168,7 +168,7 @@ static void irqsim_work_func(struct work_struct *w)
 	 * during the pr_info().
 	 */
 	cpu = get_cpu();
-	pr_info("[CPU#%d] %s\n", cpu, __func__);
+	pr_info("irqsim: [CPU#%d] %s\n", cpu, __func__);
 	put_cpu();
 
 	while (1) {
@@ -192,7 +192,7 @@ static void irqsim_work_func(struct work_struct *w)
 static struct workqueue_struct *irqsim_workqueue;
 
 /*
- * Work item: holds a pointer to the function that is to be executed
+ * Work item: holds a pointer to the function that is going to be executed
  * asynchronously.
  */
 static DECLARE_WORK(work, irqsim_work_func);
@@ -218,8 +218,8 @@ static void irqsim_tasklet_func(unsigned long __data)
 
 	nsecs = (s64)ktime_to_ns(ktime_sub(tv_end, tv_start));
 
-	pr_info("[CPU#%d] in_softirq: %llu usec",
-		smp_processor_id(), (unsigned long long)nsecs >> 10);
+	pr_info("irqsim: [CPU#%d] %s in_softirq: %llu usec\n",
+		smp_processor_id(), __func__, (unsigned long long)nsecs >> 10);
 }
 
 /* Tasklet for asynchronous bottom-half processing in softirq context */
@@ -229,7 +229,10 @@ static void process_data(void)
 {
 	WARN_ON_ONCE(!irqs_disabled());
 
+	pr_info("irqsim: [CPU#%d] produce data\n", smp_processor_id());
 	fast_buf_put(update_irqsim_data());
+
+	pr_info("irqsim: [CPU#%d] scheduling tasklet\n", smp_processor_id());
 	tasklet_schedule(&irqsim_tasklet);
 }
 
@@ -238,6 +241,7 @@ static void timer_handler(struct timer_list *__timer)
 	ktime_t tv_start, tv_end;
 	s64 nsecs;
 
+	pr_info("irqsim: [CPU#%d] enter %s\n", smp_processor_id(), __func__);
 	/*
 	 * We're using a kernel timer to simulate a hard-irq, so we must expect
 	 * to be in softirq context here.
@@ -256,8 +260,8 @@ static void timer_handler(struct timer_list *__timer)
 
 	nsecs = (s64)ktime_to_ns(ktime_sub(tv_end, tv_start));
 
-	pr_info("[CPU#%d] in_irq: %llu usec",
-		smp_processor_id(), (unsigned long long)nsecs >> 10);
+	pr_info("irqsim: [CPU#%d] %s in_irq: %llu usec\n",
+		smp_processor_id(), __func__, (unsigned long long)nsecs >> 10);
 	mod_timer(&timer, jiffies + msecs_to_jiffies(delay));
 
 	local_irq_enable();
@@ -269,7 +273,7 @@ static ssize_t irqsim_read(struct file *file, char __user *buf,
 	unsigned int read;
 	int ret;
 
-	pr_debug("%s(%p, %zd, %lld)\n", __func__, buf, count, *ppos);
+	pr_debug("irqsim: %s(%p, %zd, %lld)\n", __func__, buf, count, *ppos);
 
 	if (unlikely(!access_ok(buf, count)))
 		return -EFAULT;
@@ -287,7 +291,7 @@ static ssize_t irqsim_read(struct file *file, char __user *buf,
 		}
 		ret = wait_event_interruptible(rx_wait, kfifo_len(&rx_fifo));
 	} while (ret == 0);
-	pr_debug("%s: out %u/%u bytes\n",
+	pr_debug("irqsim: %s: out %u/%u bytes\n",
 		__func__, read, kfifo_len(&rx_fifo));
 	mutex_unlock(&read_lock);
 
@@ -298,28 +302,28 @@ static unsigned int irqsim_poll(struct file *file, poll_table *wait)
 {
 	unsigned int mask = 0;
 
-	pr_debug("%s\n", __func__);
+	pr_debug("irqsim: %s\n", __func__);
 	if (mutex_lock_interruptible(&read_lock))
 		return -ERESTARTSYS;
 	poll_wait(file, &rx_wait, wait);
 	if (kfifo_len(&rx_fifo))
 		mask |= POLLIN | POLLRDNORM;
 	mutex_unlock(&read_lock);
-	pr_debug("%s: mask = %#x\n", __func__, mask);
+	pr_debug("irqsim: %s: mask = %#x\n", __func__, mask);
 
 	return mask;
 }
 
 static int irqsim_open(struct inode *inode, struct file *filp)
 {
-	pr_debug("%s\n", __func__);
+	pr_debug("irqsim: %s\n", __func__);
 	mod_timer(&timer, jiffies + msecs_to_jiffies(delay));
 	return 0;
 }
 
 static int irqsim_release(struct inode *inode, struct file *filp)
 {
-	pr_debug("%s\n", __func__);
+	pr_debug("irqsim: %s\n", __func__);
 	del_timer_sync(&timer);
 	flush_workqueue(irqsim_workqueue);
 	fast_buf_clear();
@@ -398,7 +402,7 @@ static int __init irqsim_init(void)
 	/* Setup the timer */
 	timer_setup(&timer, timer_handler, 0);
 
-	pr_info("register new irqsim device: %d,%d\n", major, 0);
+	pr_info("irqsim: registered new irqsim device: %d,%d\n", major, 0);
 out:
 	return ret;
 error_cdev:
